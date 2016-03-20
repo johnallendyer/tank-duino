@@ -69,6 +69,8 @@ int dailyHigh = 0;
 // Define pins for CO2 relays
 #define CO2_RELAY1 4
 #define CO2_RELAY2 5
+int co2OnHour = 7;      // 7AM
+int co2OffHour = 18;    // 6PM
 
 // Current Satellite+ IR Codes (NEC Protocol)
 unsigned long codeHeader = 0x20DF; // Always the same
@@ -133,7 +135,7 @@ void SetAlarms() {
     Alarm.alarmRepeat( 7, 00, 0, DawnDusk);     // 7AM
 
     // CO2 - on at 7AM
-    Alarm.alarmRepeat( 7, 00, 0, TurnOnCO2);    // 7AM
+    Alarm.alarmRepeat(co2OnHour, 00, 0, TurnOnCO2);
 
     // Lights
     Alarm.alarmRepeat(10, 00, 0, Cloud2);       // 10AM
@@ -141,7 +143,7 @@ void SetAlarms() {
     Alarm.alarmRepeat(16, 00, 0, Cloud2);       // 4PM
 
     // CO2 - off at 6PM
-    Alarm.alarmRepeat(18, 00, 0, TurnOffCO2);    // 6PM
+    Alarm.alarmRepeat(co2OffHour, 00, 0, TurnOffCO2);
 
 
     // Lights
@@ -184,6 +186,12 @@ void setup() {
     printf_P(PSTR("SRAM: %d\n"), freeRam());
 
     printf_P(PSTR("To test IR codes, send 1 - 32\n"));
+
+    if (hour() >= co2OnHour && hour() < co2OffHour) {
+        TurnOnCO2();
+    } else {
+        TurnOffCO2();
+    }
 }
 
 void loop() {
