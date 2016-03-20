@@ -20,11 +20,8 @@
 // Install LCD per instructions at http://learn.adafruit.com/character-lcds/overview
 
 // TODO:
-//   - add to source control
-//   - temp sensor
 //   - relay control for co2
 //   - interior cabinet light
-//   - solder up and encase
 
 #include <Wire.h>
 #include <RTClib.h>
@@ -59,16 +56,19 @@ static FILE lcdout = {0} ;   // LCD FILE structure
 #define D5_pin 5
 #define D6_pin 6
 #define D7_pin 7
-#define CO2_RELAY1 8
-#define CO2_RELAY2 9
 
 LiquidCrystal_I2C lcd(I2C_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin, D6_pin, D7_pin, BACKLIGHT_PIN, POSITIVE);
 //END new section added for I2C LCD backpack
 
-//---------- THERMOMETER SETUP
+//---------- THERMOMETER SETUP - pin 2
 OneWire oneWire(2);
-DallasTemperature sensors(&oneWire);
-DeviceAddress thermometer = { 0x28, 0xFF, 0xCC, 0x00, 0xA4, 0x15, 0x04, 0x51 };
+DallasTemperature sensor(&oneWire);
+int dailyLow = 0;
+int dailyHigh = 0;
+
+// Define pins for CO2 relays
+#define CO2_RELAY1 4
+#define CO2_RELAY2 5
 
 // Current Satellite+ IR Codes (NEC Protocol)
 unsigned long codeHeader = 0x20DF; // Always the same
@@ -122,10 +122,11 @@ const char arrMSG[][MAX_MSG_LEN + 1] PROGMEM = {
 };
 
 void SetAlarms() {
-    // Set up your desired alarms here
-    // The default value of dtNBR_ALARMS is 6 in TimeAlarms.h.
-    // This code sets 9 alarms by default, so you'll need to change dtNBR_ALARMS to 9 or more
-    // Changes the times to suit yourself. Add as many alarms as you like, just stay within dtNBR_ALARMS
+    // Set up alarms here - make sure dtNBR_ALARMS in TimeAlarms.h is
+    // at least equal to the number of alarms declared below
+
+    // Reset daily high/low temperature
+    Alarm.alarmRepeat( 0, 00, 0, ResetDailyTemps);  // 12AM
 
     // Lights
     Alarm.alarmRepeat( 6, 00, 0, PowerOnOff);   // 6AM
@@ -149,8 +150,7 @@ void SetAlarms() {
     Alarm.alarmRepeat(22, 00, 0, PowerOnOff);   // 10AM
 
     // Timer for temperature sensor
-    Alarm.timerRepeat(1800, PrintTemp);  // Print temps every 30 minutes
-    PrintTemp();
+    Alarm.timerRepeat(5, PrintTemp);  // Update temp every 5 seconds
 }
 
 void setup() {
@@ -158,8 +158,7 @@ void setup() {
     RTC.begin();
     Serial.begin(9600);
     lcd.begin(LCD_COLS, LCD_ROWS);
-    sensors.begin();   // Start temp sensors
-    sensors.setResolution(thermometer, 9);  // Set them to 9 bit mode
+    sensor.begin();   // Start temp sensor
     pinMode(CO2_RELAY1, OUTPUT);
     pinMode(CO2_RELAY2, OUTPUT);
 
@@ -247,12 +246,26 @@ void SendCode(int cmd, byte numTimes) {
     fprintf(&lcdout, "%-10S", arrMSG[cmd]);
 }
 
+void ResetDailyTemps() {
+    dailyLow = 0;
+    dailyHigh = 0;
+}
+
 void PrintTemp() {
-  float tempC = sensors.getTempC(thermometer);
-  lcd.setCursor(0,2);
-  lcd.print("Temp: ");
-  lcd.print(DallasTemperature::toFahrenheit(tempC), 1);
-  lcd.print((char)223);
+    sensor.requestTemperatures();
+    int temp = (int)(sensor.getTempCByIndex(0) * 1.8 + 32.5);
+    char deg = (char)223;
+
+    if (temp < dailyLow || dailyLow == 0) {
+        dailyLow = temp;
+    }
+
+    if (temp > dailyHigh) {
+        dailyHigh = temp;
+    }
+
+    lcd.setCursor(0,2);
+    fprintf(&lcdout, "Temp: %d%c (%d%c/%d%c)", temp, deg, dailyLow, deg, dailyHigh, deg);
 }
 
 void TurnOnCO2() {
