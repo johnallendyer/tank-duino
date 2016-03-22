@@ -127,32 +127,27 @@ void SetAlarms() {
     // Set up alarms here - make sure dtNBR_ALARMS in TimeAlarms.h is
     // at least equal to the number of alarms declared below
 
-    // Reset daily high/low temperature
-    Alarm.alarmRepeat( 0, 00, 0, ResetDailyTemps);  // 12AM
-
     // Lights
     Alarm.alarmRepeat( 6, 00, 0, PowerOnOff);   // 6AM
     Alarm.alarmRepeat( 7, 00, 0, DawnDusk);     // 7AM
-
-    // CO2 - on at 7AM
-    Alarm.alarmRepeat(co2OnHour, 00, 0, TurnOnCO2);
-
-    // Lights
     Alarm.alarmRepeat(10, 00, 0, Cloud2);       // 10AM
     Alarm.alarmRepeat(11, 00, 0, FullSpec);     // 11AM
     Alarm.alarmRepeat(16, 00, 0, Cloud2);       // 4PM
-
-    // CO2 - off at 6PM
-    Alarm.alarmRepeat(co2OffHour, 00, 0, TurnOffCO2);
-
-
-    // Lights
     Alarm.alarmRepeat(18, 00, 0, DawnDusk);     // 6PM
     Alarm.alarmRepeat(20, 00, 0, Moon2);        // 8PM
     Alarm.alarmRepeat(22, 00, 0, PowerOnOff);   // 10AM
 
-    // Timer for temperature sensor
-    Alarm.timerRepeat(5, PrintTemp);  // Update temp every 5 seconds
+    // Timers for temperature sensor
+    Alarm.alarmRepeat( 0, 00, 0, ResetDailyTemps);  // Reset low/high at 12AM
+    Alarm.timerRepeat(5, PrintTemp);                // Update temp every 5 seconds
+
+    // CO2 timers
+    Alarm.alarmRepeat(co2OnHour, 00, 0, TurnOnCO2);
+    Alarm.alarmRepeat(co2OffHour, 00, 0, TurnOffCO2);
+    // Uncomment for testing CO2 relays
+    // Alarm.timerRepeat(5, TurnOnCO2);
+    // Alarm.timerRepeat(5, TurnOffCO2);
+
 }
 
 void setup() {
@@ -251,7 +246,7 @@ void SendCode(int cmd, byte numTimes) {
 
     lcd.setCursor(0,1);
     lcd.print("LED Mode: ");
-    fprintf(&lcdout, "%-10S", arrMSG[cmd]);
+    fprintf(&lcdout, "%-10S\n", arrMSG[cmd]);
 }
 
 void ResetDailyTemps() {
@@ -273,21 +268,21 @@ void PrintTemp() {
     }
 
     lcd.setCursor(0,2);
-    fprintf(&lcdout, "Temp: %d%c (%d%c/%d%c)", temp, deg, dailyLow, deg, dailyHigh, deg);
+    fprintf(&lcdout, "Temp: %d%c (%d%c/%d%c)\n", temp, deg, dailyLow, deg, dailyHigh, deg);
 }
 
 void TurnOnCO2() {
     digitalWrite(CO2_RELAY1, 0);
     digitalWrite(CO2_RELAY2, 1);
     lcd.setCursor(0,3);
-    lcd.print("CO2: On");
+    lcd.print("CO2: On\n");
 }
 
 void TurnOffCO2() {
     digitalWrite(CO2_RELAY1, 1);
     digitalWrite(CO2_RELAY2, 0);
     lcd.setCursor(0,3);
-    lcd.print("CO2: Off");
+    lcd.print("CO2: Off\n");
 }
 
 int freeRam() {
