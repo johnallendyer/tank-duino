@@ -67,8 +67,7 @@ int dailyLow = 0;
 int dailyHigh = 0;
 
 // Define pins for CO2 relays
-#define CO2_RELAY1 4
-#define CO2_RELAY2 5
+#define CO2_PIN 5
 int co2OnHour = 7;      // 7AM
 int co2OffHour = 18;    // 6PM
 
@@ -144,10 +143,6 @@ void SetAlarms() {
     // CO2 timers
     Alarm.alarmRepeat(co2OnHour, 00, 0, TurnOnCO2);
     Alarm.alarmRepeat(co2OffHour, 00, 0, TurnOffCO2);
-    // Uncomment for testing CO2 relays
-    // Alarm.timerRepeat(5, TurnOnCO2);
-    // Alarm.timerRepeat(5, TurnOffCO2);
-
 }
 
 void setup() {
@@ -156,8 +151,7 @@ void setup() {
     Serial.begin(9600);
     lcd.begin(LCD_COLS, LCD_ROWS);
     sensor.begin();   // Start temp sensor
-    pinMode(CO2_RELAY1, OUTPUT);
-    pinMode(CO2_RELAY2, OUTPUT);
+    pinMode(CO2_PIN, OUTPUT);
 
     // fill in the UART file descriptor with pointer to writer.
     fdev_setup_stream (&uartout, uart_putchar, NULL, _FDEV_SETUP_WRITE);
@@ -242,11 +236,11 @@ void SendCode(int cmd, byte numTimes) {
         delay(100);
     }
     // Print the string associated with the IR code & the time
-    printf("%S: %02d:%02d:%02d\n", arrMSG[cmd], hour(), minute(), second());
+    printf("%S: %02d:%02d:%02d", arrMSG[cmd], hour(), minute(), second());
 
     lcd.setCursor(0,1);
     lcd.print("LED Mode: ");
-    fprintf(&lcdout, "%-10S\n", arrMSG[cmd]);
+    fprintf(&lcdout, "%-10S", arrMSG[cmd]);
 }
 
 void ResetDailyTemps() {
@@ -268,21 +262,19 @@ void PrintTemp() {
     }
 
     lcd.setCursor(0,2);
-    fprintf(&lcdout, "Temp: %d%c (%d%c/%d%c)\n", temp, deg, dailyLow, deg, dailyHigh, deg);
+    fprintf(&lcdout, "Temp: %d%c (%d%c/%d%c)", temp, deg, dailyLow, deg, dailyHigh, deg);
 }
 
 void TurnOnCO2() {
-    digitalWrite(CO2_RELAY1, 0);
-    digitalWrite(CO2_RELAY2, 1);
+    digitalWrite(CO2_PIN, HIGH);
     lcd.setCursor(0,3);
-    lcd.print("CO2: On\n");
+    lcd.print("CO2: On ");
 }
 
 void TurnOffCO2() {
-    digitalWrite(CO2_RELAY1, 1);
-    digitalWrite(CO2_RELAY2, 0);
+    digitalWrite(CO2_PIN, LOW);
     lcd.setCursor(0,3);
-    lcd.print("CO2: Off\n");
+    lcd.print("CO2: Off");
 }
 
 int freeRam() {
