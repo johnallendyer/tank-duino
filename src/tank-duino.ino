@@ -20,7 +20,6 @@
 // Install LCD per instructions at http://learn.adafruit.com/character-lcds/overview
 
 // TODO:
-//   - relay control for co2
 //   - interior cabinet light
 
 #include <Wire.h>
@@ -68,8 +67,10 @@ int dailyHigh = 0;
 
 // Define pins for CO2 relays
 #define CO2_PIN 5
-int co2OnHour = 7;      // 7AM
-int co2OffHour = 18;    // 6PM
+int co2OnHour;
+int co2OffHour;
+
+#define BLACKOUT 0
 
 // Current Satellite+ IR Codes (NEC Protocol)
 unsigned long codeHeader = 0x20DF; // Always the same
@@ -126,23 +127,26 @@ void SetAlarms() {
     // Set up alarms here - make sure dtNBR_ALARMS in TimeAlarms.h is
     // at least equal to the number of alarms declared below
 
-    // Lights
-    Alarm.alarmRepeat( 6, 00, 0, PowerOnOff);   // 6AM
-    Alarm.alarmRepeat( 7, 00, 0, DawnDusk);     // 7AM
-    Alarm.alarmRepeat(10, 00, 0, Cloud2);       // 10AM
-    Alarm.alarmRepeat(11, 00, 0, FullSpec);     // 11AM
-    Alarm.alarmRepeat(16, 00, 0, Cloud2);       // 4PM
-    Alarm.alarmRepeat(18, 00, 0, DawnDusk);     // 6PM
-    Alarm.alarmRepeat(20, 00, 0, Moon2);        // 8PM
-    Alarm.alarmRepeat(22, 00, 0, PowerOnOff);   // 10AM
+    if (BLACKOUT == 0) {
+        // Lights
+        Alarm.alarmRepeat(10, 30, 0, PowerOnOff); // 10:30 AM   (30 min Moon2)
+        Alarm.alarmRepeat(11, 00, 0, DawnDusk);   // 11:00 AM   (15 min DawnDusk)
+        Alarm.alarmRepeat(11, 15, 0, FullSpec);   // 11:15 AM   (8 hrs FullSpec)
+        Alarm.alarmRepeat(19, 15, 0, DawnDusk);   //  7:15 PM   (15 min DawnDusk)
+        Alarm.alarmRepeat(19, 30, 0, Moon2);      //  7:30 PM   (30 min Moon2)
+        Alarm.alarmRepeat(20, 0, 0, PowerOnOff);  //  8:00 PM   (lights out)
+
+        // CO2 timers
+        co2OnHour  = 10;    // 10:00 AM
+        co2OffHour = 18;    //  6:00 PM
+
+        Alarm.alarmRepeat(co2OnHour, 0, 0, TurnOnCO2);
+        Alarm.alarmRepeat(co2OffHour, 0, 0, TurnOffCO2);
+    }
 
     // Timers for temperature sensor
-    Alarm.alarmRepeat( 0, 00, 0, ResetDailyTemps);  // Reset low/high at 12AM
+    Alarm.alarmRepeat(0, 0, 0, ResetDailyTemps);    // Reset low/high at 12AM
     Alarm.timerRepeat(5, PrintTemp);                // Update temp every 5 seconds
-
-    // CO2 timers
-    Alarm.alarmRepeat(co2OnHour, 00, 0, TurnOnCO2);
-    Alarm.alarmRepeat(co2OffHour, 00, 0, TurnOffCO2);
 }
 
 void setup() {
@@ -176,10 +180,14 @@ void setup() {
 
     printf_P(PSTR("To test IR codes, send 1 - 32\n"));
 
-    if (hour() >= co2OnHour && hour() < co2OffHour) {
+    if (BLACKOUT == 0 && hour() >= co2OnHour && hour() < co2OffHour) {
         TurnOnCO2();
     } else {
         TurnOffCO2();
+        if (BLACKOUT == 1) {
+            lcd.setCursor(0,1);
+            lcd.print("LED Mode: Blackout");
+        }
     }
 }
 
